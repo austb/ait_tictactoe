@@ -6,20 +6,17 @@ import android.util.Pair;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.austinblatt.aittictactoe.model.TicTacToeBoard;
+import com.austinblatt.aittictactoe.model.TicTacToeModel;
 import com.austinblatt.aittictactoe.view.TicTacToeView;
+import com.facebook.shimmer.ShimmerFrameLayout;
 
-public class MainActivity extends AppCompatActivity implements TicTacToeView.OnPlayMadeListener {
-
+public class MainActivity extends AppCompatActivity {
 
     private TicTacToeView tttView;
     private Button clearBoardBtn;
-    private TicTacToeBoard board;
-    private TextView gameOverMsg;
-
-    private boolean isXTurn = true;
+    private TicTacToeModel board;
+    private TextView gameStatusMsg;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,9 +25,13 @@ public class MainActivity extends AppCompatActivity implements TicTacToeView.OnP
 
         tttView = (TicTacToeView) findViewById(R.id.TTTView);
         clearBoardBtn = (Button) findViewById(R.id.clear_board_btn);
-        gameOverMsg = (TextView) findViewById(R.id.gameOverMsg);
+        board = TicTacToeModel.getInstance();
 
-        connectModelToView();
+        gameStatusMsg = (TextView) findViewById(R.id.gameStatus);
+        gameStatusMsg.setText("1's turn");
+
+        ShimmerFrameLayout shimmer = (ShimmerFrameLayout) findViewById(R.id.shimmer_view_container);
+        shimmer.startShimmerAnimation();
 
         initNewGameBtn();
 
@@ -40,64 +41,14 @@ public class MainActivity extends AppCompatActivity implements TicTacToeView.OnP
         clearBoardBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                board.clearGame();
+                board.resetModel();
+                gameStatusMsg.setText("1's turn");
                 tttView.invalidate();
-                isXTurn = true;
-                gameOverMsg.setVisibility(View.INVISIBLE);
             }
         });
     }
 
-    private void connectModelToView() {
-        board = new TicTacToeBoard();
-
-        tttView.setBoard(board);
-        tttView.setOnPlayMadeListener(this);
-    }
-
-    @Override
-    public void onPlayMade(View v, Pair<Float, Float> screenLocation) {
-        Pair<Integer, Integer> pos = calculateBoardLocation(v, screenLocation);
-
-        if(board.isEmpty(pos) && !board.isOver()) {
-            playPieceOnBoard(pos);
-        } else if (!board.isOver()) {
-            displayPositionFilledMsg(pos);
-        }
-
-        if(board.isWon()) {
-            displayGameOverMsg(getString(R.string.playerWonMsg, board.getWinner()));
-        } else if(board.isOver()) {
-            displayGameOverMsg(getString(R.string.gameEndInTie));
-        }
-    }
-
-    private void displayGameOverMsg(String str) {
-        gameOverMsg.setText(str);
-        gameOverMsg.setVisibility(View.VISIBLE);
-    }
-
-    private void displayPositionFilledMsg(Pair<Integer, Integer> pos) {
-        String str = getString(R.string.boardPositionFilled, pos.first+1, pos.second+1);
-        Toast.makeText(getApplicationContext(), str,
-                Toast.LENGTH_SHORT).show();
-    }
-
-    private void playPieceOnBoard(Pair<Integer, Integer> pos) {
-        if(isXTurn) {
-            board.playX(pos);
-        } else {
-            board.playO(pos);
-        }
-        isXTurn = !isXTurn;
-    }
-
-
-    private Pair<Integer, Integer> calculateBoardLocation(View v, Pair<Float, Float> screenLocation) {
-        int boardColumnWidth = v.getWidth() / 3;
-        int boardColumnHeight = v.getHeight() / 3;
-
-        return new Pair<>((int) (screenLocation.first / boardColumnWidth),
-                (int) (screenLocation.second / boardColumnHeight));
+    public void setStatusText(String text) {
+        gameStatusMsg.setText(text);
     }
 }

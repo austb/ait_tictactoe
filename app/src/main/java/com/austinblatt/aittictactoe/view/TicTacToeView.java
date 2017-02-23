@@ -4,48 +4,25 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.PointF;
 import android.util.AttributeSet;
-import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
-import android.widget.Toast;
+import android.widget.TextView;
 
-import com.austinblatt.aittictactoe.model.TicTacToeBoard;
-import com.austinblatt.aittictactoe.model.TicTacToePlay;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static android.R.attr.height;
-import static android.R.attr.y;
-
+import com.austinblatt.aittictactoe.MainActivity;
+import com.austinblatt.aittictactoe.R;
+import com.austinblatt.aittictactoe.model.TicTacToeModel;
 
 public class TicTacToeView extends View {
 
-    private Paint paintLine;
+    private final TicTacToeModel board;
     private Paint paintBg;
+    private Paint paintLine;
 
-    private TicTacToeBoard board;
-
-    private OnPlayMadeListener listener;
-
-    public interface OnPlayMadeListener {
-        void onPlayMade(View v, Pair<Float, Float> screenLocation);
-    }
-
-    public void setOnPlayMadeListener(OnPlayMadeListener l) {
-        listener = l;
-    }
 
     public TicTacToeView(Context context, AttributeSet attrs) {
         super(context, attrs);
 
-        createPaints();
-    }
-
-    private void createPaints() {
         paintBg = new Paint();
         paintBg.setColor(Color.BLACK);
         paintBg.setStyle(Paint.Style.FILL);
@@ -54,6 +31,8 @@ public class TicTacToeView extends View {
         paintLine.setColor(Color.WHITE);
         paintLine.setStyle(Paint.Style.STROKE);
         paintLine.setStrokeWidth(5);
+
+        board = TicTacToeModel.getInstance();
     }
 
     @Override
@@ -67,41 +46,43 @@ public class TicTacToeView extends View {
     }
 
     private void drawBoardPieces(Canvas canvas) {
-        int scale = getWidth() / 3;
-
-        int xPos = 0;
-        int yPos = 0;
-
-        if(board != null) {
-            for (TicTacToePlay p : board.boardPlays()) {
-                drawSingleBoardPiece(canvas, scale, p);
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                short piece = board.getFieldContent(i, j);
+                if(piece != TicTacToeModel.EMPTY) {
+                    drawSingleBoardPiece(canvas, piece, i, j);
+                }
             }
         }
     }
 
-    private void drawSingleBoardPiece(Canvas canvas, int scale, TicTacToePlay p) {
-        Pair<Integer, Integer> pos = p.getPosition();
-
-        if (p.isX()) {
-            drawBoardXAtPosition(canvas, scale, pos);
+    private void drawSingleBoardPiece(Canvas canvas, short piece, int x, int y) {
+        if (piece == TicTacToeModel.CIRCLE) {
+            drawCircleAtPosition(canvas, x, y);
         } else {
-            drawBoardOAtPosition(canvas, scale, pos);
+            drawCrossAtPosition(canvas, x, y);
         }
     }
 
-    private void drawBoardOAtPosition(Canvas canvas, int scale, Pair<Integer, Integer> pos) {
-        int xPos = pos.first * scale + scale / 2;
-        int yPos = pos.second * scale + scale / 2;
+
+    private void drawCircleAtPosition(Canvas canvas, int x, int y) {
+        int scale = getWidth() / 3;
+        
+        int xPos = x * scale + scale / 2;
+        int yPos = y * scale + scale / 2;
         canvas.drawCircle(xPos, yPos, scale / 4, paintLine);
     }
 
-    private void drawBoardXAtPosition(Canvas canvas, int scale, Pair<Integer, Integer> pos) {
-        int xPos = pos.first * scale + scale / 4;
-        int yPos = pos.second * scale + scale / 4;
+    private void drawCrossAtPosition(Canvas canvas, int x, int y) {
+        int scale = getWidth() / 3;
+
+        int xPos = x * scale + scale / 4;
+        int yPos = y * scale + scale / 4;
 
         canvas.drawLine(xPos, yPos, xPos + scale / 2, yPos + scale / 2, paintLine);
         canvas.drawLine(xPos + scale / 2, yPos, xPos, yPos + scale / 2, paintLine);
     }
+
 
     private void drawBoardLines(Canvas canvas) {
         canvas.drawLine(getWidth()/3, 0, getWidth()/3, getHeight(), paintLine);
@@ -113,22 +94,42 @@ public class TicTacToeView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
 
-        if(event.getAction() == MotionEvent.ACTION_DOWN) {
-            Pair<Float, Float> pos = new Pair<>(event.getX(), event.getY());
+            int x = calculateBoardLocation(event.getX());
+            int y = calculateBoardLocation(event.getY());
 
-            if(listener != null) {
-                listener.onPlayMade(this, pos);
-                invalidate();
-            } else {
-                throw new RuntimeException("TicTacToeView onPlayMade Listener is unset");
+            if(board.getFieldContent(x,y) == TicTacToeModel.EMPTY && board.checkWinner() == 0) {
+                board.makeMove(x, y, board.getNextPlayer());
+                board.changeNextPlayer();
             }
 
+            MainActivity activity = (MainActivity) getContext();
+            if(board.checkWinner() == TicTacToeModel.CIRCLE) {
+                activity.setStatusText("O's win");
+            } else if(board.checkWinner() == TicTacToeModel.CROSS) {
+                activity.setStatusText("X's win");
+            } else {
+                activity.setStatusText(board.getNextPlayer() + "'s turn");
+            }
+
+            invalidate();
         }
-        return super.onTouchEvent(event);
+
+        return true;
     }
 
-    public void setBoard(TicTacToeBoard board) {
-        this.board = board;
+    private int calculateBoardLocation(float screen) {
+        int boardWidth = getWidth() / 3;
+
+        return (int) screen / boardWidth;
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int w = MeasureSpec.getSize(widthMeasureSpec);
+        int h = MeasureSpec.getSize(heightMeasureSpec);
+        int d = w == 0 ? h : h == 0 ? w : w < h ? w : h;
+        setMeasuredDimension(d, d);
     }
 }
