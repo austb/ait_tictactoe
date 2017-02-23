@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">AITTicTacToe</string>
+    <string name="clear_board_btn">New Game</string>
+    <string name="boardPositionFilled">Row %1$d column %2$d is already filled.</string>
+    <string name="game_over">Game Over!</string>
+    <string name="gameEndInTie">It\'s a tie! Game Over!</string>
+    <string name="playerWonMsg">%1$s \'s won. Game Over!</string>
+</resources>
